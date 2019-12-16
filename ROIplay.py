@@ -10,7 +10,7 @@ A bunch of functions for handling voxel and ROI masks and time series and for al
 import numpy as np
 import nibabel as nib
 
-def pickROITs(dataPath, ROIMaskPath, returnVoxels=False):
+def pickROITs(dataPath, ROIMaskPath, returnVoxels=False, grayMaskPath=None):
     """
     Starting from full 4D fMRI data matrix, picks the time series of ROIs based
     on a mask. The ROI time series is defined as the average of the voxel time
@@ -24,6 +24,9 @@ def pickROITs(dataPath, ROIMaskPath, returnVoxels=False):
                  (voxels outside of the brain should have value 0).
     returnVoxels: boolean; if True, time series of each voxel are returned instead
                   of ROI time series
+    grayMaskPath: str, path to which the gray matter mask has been saved in .nii form. If
+                  grayMaskPath is given, the ROI mask will be multiplied by the gray matter mask
+                  before extracting ROI time series.
                   
     Returns:
     --------
@@ -32,6 +35,9 @@ def pickROITs(dataPath, ROIMaskPath, returnVoxels=False):
     """
     data = readNii(dataPath)
     ROIMask = readNii(ROIMaskPath)
+    if not grayMaskPath == None:
+        grayMask = readNii(grayMaskPath)
+        ROIMask = ROIMask*grayMask
     if returnVoxels:
         x,y,z = np.where(ROIMask>0)
         ROIMap = np.transpose(np.stack((x,y,z)))
