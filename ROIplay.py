@@ -107,19 +107,19 @@ def atlas2map(ROIMaskPath, greyMaskPath, saveMap=False, mapSavePath=''):
     x,y,z = np.where(greyMask>0)
     ROIIndices = ROIMask[(x,y,z)]
     ROIMap = np.zeros((len(x),2))
-    c = 0
-    for i in range(1,np.amax(ROIIndices)+1):
-        ind = np.where(ROIIndices == i)
-        ROIMap[c:c+len(ind),0] = np.ones(len(ind)*i)
-        ROIMap[c:c+len(ind),1] = ind
-        c += len(ind)
+    counter = 0
+    for i in range(0,int(np.amax(ROIIndices)+1)):
+        ind = np.where(ROIIndices == i)[0]
+        if i == 0: # voxels that don't belong to any ROI; ROI index set to -1
+            ROIMap[counter:counter+len(ind),0] = np.ones(len(ind))*-1
+        else:
+            ROIMap[counter:counter+len(ind),0] = np.ones(len(ind))*i
+        ROIMap[counter:counter+len(ind),1] = ind
+        counter += len(ind)
     if saveMap:
         np.save(mapSavePath,ROIMap)
     return ROIMap
             
-    
-    
-
 # Data IO:
             
 def readNii(path):
