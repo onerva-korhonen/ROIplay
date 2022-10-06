@@ -81,6 +81,8 @@ def pickVoxelTs(dataPath, greyMaskPath, saveTs=False, tsSavePath=''):
         np.save(tsSavePath,voxelTs)
     return voxelTs
 
+# Mask operations
+
 def atlas2map(ROIMaskPath, greyMaskPath, saveMap=False, mapSavePath=''):
     """
     Based on the 4D ROI atlas matrix in NIFTI format, builds a 2D numpy array 
@@ -119,7 +121,37 @@ def atlas2map(ROIMaskPath, greyMaskPath, saveMap=False, mapSavePath=''):
     if saveMap:
         np.save(mapSavePath,ROIMap)
     return ROIMap
-            
+
+def makeGroupMask(indMaskPaths, saveGroupMask=False, groupMaskSavePath=''):
+    """
+    Combines individual mask arrays into a group mask that has non-zero values
+    only for voxels that have a non-zero value in all individual masks.
+    
+    Parameters:
+    -----------
+    indMaskPaths: list of str, paths of the individual masks
+    saveGroupMask: bln, if True, the mask is saved as .nii using the affine of
+                   the first individual mask in indMaskPaths
+    groupMaskDataPath: str, path to which to save the group mask
+    
+    Returns:
+    -------
+    groupMask: np.array, the group mask
+    """
+    for i, indMaskPath in enumerate(indMaskPaths):
+        indMask = readNii(indMaskPath)
+        if i == 0:
+            groupMask = indMask.copy()
+        else:
+            groupMask = groupMask*indMask
+    if saveGroupMask:
+        template = nib.load(indMaskPaths[0])
+        affine = template.affine # using the affine of the first individual mask, should apply for all individual masks
+        header = nib.Nifti1Header() # creating an empty header; this will automatically adapt to the data
+        groupMaskImage = nib.Nifti1Image(groupMask,affine,header)
+        nib.save(groupMaskImage,groupMaskSavePath)
+    return groupMask
+
 # Data IO:
             
 def readNii(path):
