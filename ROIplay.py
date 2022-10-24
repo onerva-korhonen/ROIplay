@@ -103,20 +103,21 @@ def calculateSpatialConsistency(voxelTsPath, voxel2ROIMapPath, fTransform=False,
     ROIIndices = np.unique(voxel2ROIMap[:,0])
     ROIIndices = ROIIndices[(ROIIndices >= 0)]
     spatialConsistencies = np.zeros(len(ROIIndices))
-    for ROIIndex in ROIIndices:
+    for i, ROIIndex in enumerate(ROIIndices):
         voxelIndicesInROI = voxel2ROIMap[:,1][np.where(voxel2ROIMap[:,0]==ROIIndex)]
+        voxelIndicesInROI = voxelIndicesInROI.astype('int')
         if len(voxelIndicesInROI) == 1:
             spatialConsistency = 1.
         else:
             voxelTsInROI = voxelTs[voxelIndicesInROI]
-            correlations = np.corrcoef(voxelTs) # NOTE: replacing this with calculatePearsonR doesn't speed up the calculation
+            correlations = np.corrcoef(voxelTsInROI) # NOTE: replacing this with calculatePearsonR doesn't speed up the calculation
             correlations = correlations[np.tril_indices(voxelTsInROI.shape[0],k=-1)] # keeping only the lower triangle, diagonal is discarded
             if fTransform:
                 correlations = np.arctanh(correlations)
                 spatialConsistency = np.tanh(np.mean(correlations))
             else:
                 spatialConsistency = np.mean(correlations)
-        spatialConsistencies[ROIIndex] = spatialConsistency
+        spatialConsistencies[i] = spatialConsistency
     if saveConsistency:
         np.save(savePath,spatialConsistencies)
     return spatialConsistencies
