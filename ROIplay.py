@@ -81,6 +81,46 @@ def pickVoxelTs(dataPath, greyMaskPath, saveTs=False, tsSavePath=''):
         np.save(tsSavePath,voxelTs)
     return voxelTs
 
+def calculateSpatialConsistency(voxelTsPath, voxel2ROIMapPath, fTransform=False, saveConsistency=False, savePath=''):
+    """
+    Calculates the spatial consistency (mean Pearson correlation between voxel time series, see
+    Korhonen et al. 2017, Net Neurosci) of ROIs.
+    
+    Parameters:
+    -----------
+    voxelTsPath: str, path to the voxel time series file created by pickVoxelTs
+    voxel2ROIMapPath: str, path to the voxel2ROIMap file created by atlas2map
+    fTransform: bln, if True, the Pearson correlations are f-transformed before averaging
+    saveConsistency: bln, if True, consistencies are saved as a .npy file
+    savePath: str, path to which to save the consistencies
+    
+    Returns:
+    --------
+    consistencies: np.array, consistencies of ROIs in the order of ROIs in voxel2ROIMap
+    """
+    voxelTs = np.load(voxelTsPath)
+    voxel2ROIMap = np.load(voxel2ROIMapPath)
+    ROIIndices = np.unique(voxel2ROIMap[:,0])
+    ROIIndices = ROIIndices[(ROIIndices >= 0)]
+    spatialConsistencies = np.zeros(len(ROIIndices))
+    for ROIIndex in ROIIndices:
+        voxelIndicesInROI = voxel2ROIMap[:,1][np.where(voxel2ROIMap[:,0]==ROIIndex)]
+        if len(voxelIndicesInROI) == 1:
+            spatialConsistency = 1.
+        else:
+            voxelTsInROI = voxelTs[voxelIndicesInROI]
+            correlations = np.corrcoef(voxelTs) # NOTE: replacing this with calculatePearsonR doesn't speed up the calculation
+            correlations = correlations[np.tril_indices(voxelTsInROI.shape[0],k=-1)] # keeping only the lower triangle, diagonal is discarded
+            if fTransform:
+                correlations = np.arctanh(correlations)
+                spatialConsistency = np.tanh(np.mean(correlations))
+            else:
+                spatialConsistency = np.mean(correlations)
+        spatialConsistencies[ROIIndex] = spatialConsistency
+    if saveConsistency:
+        np.save(savePath,spatialConsistencies)
+    return spatialConsistencies
+
 # Mask operations
 
 def atlas2map(ROIMaskPath, greyMaskPath, saveMap=False, mapSavePath=''):
@@ -106,6 +146,7 @@ def atlas2map(ROIMaskPath, greyMaskPath, saveMap=False, mapSavePath=''):
     """
     ROIMask = readNii(ROIMaskPath)
     greyMask = readNii(greyMaskPath)
+    assert ROIMask.shape == greyMask.shape,'ROI mask has different shape than the grey mask, check space and resolution'
     x,y,z = np.where(greyMask>0)
     ROIIndices = ROIMask[(x,y,z)]
     ROIMap = np.zeros((len(x),2))
