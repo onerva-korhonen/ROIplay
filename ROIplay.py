@@ -194,6 +194,43 @@ def makeGroupMask(indMaskPaths, saveGroupMask=False, groupMaskSavePath=''):
         nib.save(groupMaskImage,groupMaskSavePath)
     return groupMask
 
+def getROICentroids(ROIMaskPath, applyGreyMask=False, greyMaskPath='', saveCentroids=False, centroidSavePath=''):
+    """
+    Calculates the centroid coordinates of each ROI as the mean of coordinates
+    of voxels belonging to the ROI. Note that depending on the shape of the ROI,
+    the centroid may fall outside of the ROI.
+    
+    Parameters:
+    -----------
+    ROIMaskPath: str, path to which the ROI mask has been saved in .nii form. In the
+                 mask, the value of each voxel should show to which ROI the voxel belongs
+                 (voxels outside of the brain should have value 0).
+    applyGreyMask: bln, if True, the ROI mask is multiplied by a subject or group-specific grey
+              matter mask before calculating the centroid coordinates
+    greyMaskPath: str, path to which the grey matter mask has been saved in .nii form.
+    saveCentroids: bln, if True, the centroids are saved as .npy
+    centroidSavePath: str, path to which to save the centroid array
+    
+    Returns:
+    --------
+    centroids: np.array, N_ROIs x 3 array of centroid coordinates
+    """
+    ROIMask = readNii(ROIMaskPath)
+    if applyGreyMask:
+        greyMask = readNii(greyMaskPath)
+        assert ROIMask.shape == greyMask.shape,'ROI mask has different shape than the grey mask, check space and resolution'
+        ROIMask = ROIMask*greyMask
+    ROIIndices = np.unique(ROIMask)
+    np.delete(ROIIndices, np.where(ROIIndices==np.amin(ROIIndices))) # Removing the smallest unique value of ROIMask, this is typically 0 and marks voxels that don't belong to any ROI
+    centroids = np.zeros((len(ROIIndices), 3))
+    for i, ROIIndex in enumerate(ROIIndices):
+        ROIVoxels = np.where(ROIMask==ROIIndex)
+        centroid = np.mean(ROIVoxels, axis=0)
+        centroids[i,:] = centroid
+    if saveCentroids:
+        np.save(centroidSavePath, centroids)
+    return centroids
+
 # Data IO:
             
 def readNii(path):
