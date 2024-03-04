@@ -247,6 +247,44 @@ def getROICentroids(ROIMaskPath, applyGreyMask=False, greyMaskPath='', saveCentr
     else:
         return centroids
 
+def calculateVoxelDistances(ROIMaskPath, applyGreyMask=False, greyMaskPath='', saveDistances=False, distanceSavePath=''):
+    """
+    Calculates the distance matrix between all voxels in a ROI mask. Note that depending on the resolution, the voxel-voxel
+    distance matrix may be notably large.
+
+    Parameters:
+    -----------
+    ROIMaskPath: str, path to which the ROI mask has been saved in .nii form. In the
+                 mask, the value of each voxel should show to which ROI the voxel belongs
+                 (voxels outside of the brain should have value 0).
+    applyGreyMask: bln, if True, the ROI mask is multiplied by a subject or group-specific grey
+              matter mask before calculating the centroid coordinates
+    greyMaskPath: str, path to which the grey matter mask has been saved in .nii form.
+    saveDistances: bln, if True, the distance matrix is saved as .npy
+    distanceSavePath: str, path to which to save the distance matrix
+    
+    Returns:
+    --------
+    distances: np.array, N_ROIs x N_ROIs distance matrix
+    """
+    ROIMask = readNii(ROIMaskPath)
+    if applyGreyMask:
+        greyMask = readNii(greyMaskPath)
+        assert ROIMask.shape == greyMask.shape,'ROI mask has different shape than the grey mask, check space and resolution'
+        ROIMask = ROIMask*greyMask
+    ROIIndices = np.unique(ROIMask)
+    ROIVoxels = np.transpose(np.array(np.where(ROIMask > np.amin(ROIIndices))))
+    nVoxels = ROIVoxels.shape[0]
+    distances = np.zeros((nVoxels,nVoxels))
+    for i in np.arange(nVoxels):
+        for j in np.arange(i+1,nVoxels):
+            d = np.sqrt((ROIVoxels[i,0]-ROIVoxels[j,0])**2 + (ROIVoxels[i,1]-ROIVoxels[j,1])**2 + (ROIVoxels[i,2]-ROIVoxels[j,2])**2)
+            distances[i,j] = d
+            distances[j,i] = d
+    if saveDistances:
+        np.save(distanceSavePath, distances)
+    return distances
+
 # Data IO:
             
 def readNii(path):
