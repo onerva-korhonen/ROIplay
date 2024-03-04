@@ -194,11 +194,12 @@ def makeGroupMask(indMaskPaths, saveGroupMask=False, groupMaskSavePath=''):
         nib.save(groupMaskImage,groupMaskSavePath)
     return groupMask
 
-def getROICentroids(ROIMaskPath, applyGreyMask=False, greyMaskPath='', saveCentroids=False, centroidSavePath=''):
+def getROICentroids(ROIMaskPath, applyGreyMask=False, greyMaskPath='', saveCentroids=False, centroidSavePath='', calculateDistances=False, saveDistances=False, distanceSavePath=''):
     """
     Calculates the centroid coordinates of each ROI as the mean of coordinates
     of voxels belonging to the ROI. Note that depending on the shape of the ROI,
-    the centroid may fall outside of the ROI.
+    the centroid may fall outside of the ROI. Contains also possibility to 
+    calculate the distance matrix between ROI centroids.
     
     Parameters:
     -----------
@@ -210,10 +211,14 @@ def getROICentroids(ROIMaskPath, applyGreyMask=False, greyMaskPath='', saveCentr
     greyMaskPath: str, path to which the grey matter mask has been saved in .nii form.
     saveCentroids: bln, if True, the centroids are saved as .npy
     centroidSavePath: str, path to which to save the centroid array
+    calculateDistances: bln, if True, a distance matrix between ROI centroids is calculated
+    saveDistances: bln, if True, the distance matrix is saved as .npy
+    distanceSavePath: str, path to which to save the distance matrix
     
     Returns:
     --------
     centroids: np.array, N_ROIs x 3 array of centroid coordinates
+    distances: np.array, N_ROIs x N_ROIs distance matrix (only returned if calculateDistances == True)
     """
     ROIMask = readNii(ROIMaskPath)
     if applyGreyMask:
@@ -221,15 +226,26 @@ def getROICentroids(ROIMaskPath, applyGreyMask=False, greyMaskPath='', saveCentr
         assert ROIMask.shape == greyMask.shape,'ROI mask has different shape than the grey mask, check space and resolution'
         ROIMask = ROIMask*greyMask
     ROIIndices = np.unique(ROIMask)
-    np.delete(ROIIndices, np.where(ROIIndices==np.amin(ROIIndices))) # Removing the smallest unique value of ROIMask, this is typically 0 and marks voxels that don't belong to any ROI
+    ROIIndices = np.delete(ROIIndices, np.where(ROIIndices==np.amin(ROIIndices))) # Removing the smallest unique value of ROIMask, this is typically 0 and marks voxels that don't belong to any ROI
     centroids = np.zeros((len(ROIIndices), 3))
     for i, ROIIndex in enumerate(ROIIndices):
         ROIVoxels = np.where(ROIMask==ROIIndex)
-        centroid = np.mean(ROIVoxels, axis=0)
+        centroid = np.mean(ROIVoxels, axis=1)
         centroids[i,:] = centroid
     if saveCentroids:
         np.save(centroidSavePath, centroids)
-    return centroids
+    if calculateDistances:
+        distances = np.zeros((len(ROIIndices),len(ROIIndices)))
+        for i in np.arange(len(ROIIndices)):
+            for j in np.arange(i+1,len(ROIIndices)):
+                d = np.sqrt((centroids[i,0]-centroids[j,0])**2 + (centroids[i,1]-centroids[j,1])**2 + (centroids[i,2]-centroids[j,2])**2)
+                distances[i,j] = d
+                distances[j,i] = d
+        if saveDistances:
+            np.save(distanceSavePath, distances)
+        return centroids, distances
+    else:
+        return centroids
 
 # Data IO:
             
