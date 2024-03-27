@@ -302,4 +302,23 @@ def readNii(path):
     img = nib.load(path)
     data = img.get_fdata()
     return data
+
+def writeNii(data, template_path, path):
+    """
+    Writes the given data into a NIFTI file using nibabel.
     
+    Parameters:
+    -----------
+    data : np.array 
+        voxel values to be written as NIFTI, 3D or 4D
+    template : str
+        path to a template NIFTI, i.e. any NIFTI image in the same space as the data to be saved;
+        the affine of the template NIFTI will be used for saving the data
+    save_path : str
+        path to which save the data
+    """
+    template = nib.load(template_path)
+    affine = template.affine
+    header = nib.Nifti1Header()
+    data_image = nib.Nifti1Image(data, affine, header)
+    nib.save(data_image, save_path)
