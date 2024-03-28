@@ -303,7 +303,7 @@ def readNii(path):
     data = img.get_fdata()
     return data
 
-def writeNii(data, template_path, path):
+def writeNii(data, template_path, save_path):
     """
     Writes the given data into a NIFTI file using nibabel.
     
